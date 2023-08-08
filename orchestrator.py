@@ -4,18 +4,18 @@ import uuid
 import pathlib
 from typing import Dict, Union, Any, List
 
+
 class LWOrchestrator:
     """
      A very lightweight Orchestrator to run a series of modules.
     """
-
     def __init__(
         self,
         module_mapping: Dict[str, List[int]] = None,
         batch_id: str = "batch_1",
         segment_list: List[str] = None,
         run_config: Dict[int, Union[str, Dict[str, Any]]] = None,
-        results_channel: str = "blob_storage",
+        results_channel: str = "disk",
         id_val: str = None,
     ):
 
@@ -40,6 +40,7 @@ class LWOrchestrator:
     def set_batch_id() -> str:
         """
         Get the batch_id of the process.
+
         :return: A string of the UUID
         """
         batch_id = str(uuid.uuid4())
@@ -49,20 +50,18 @@ class LWOrchestrator:
     def _upload_file_to_output_channel(self, data_out: Any, file_name: str) -> None:
         """
         Apply the write function based on the output channel
+
         :param data_out: data to be uploaded to the channel
         :param file_name: name of the file to be uploaded
         :return: None
         """
         if self.results_channel == "disk":
             self.interactor.write_file_to_disk(data_out=data_out, file_name=file_name)
-        elif self.results_channel == "azure_blob":
-            key, name = os.path.split(file_name)
-            self.interactor.write_file_to_blob_storage(
-                data_out=data_out, key=key, file_name=name
-            )
+        elif self.results_channel == "blob":
+            raise NotImplementedError("blob write not yet implemented")
         else:
             logging.critical(
-                f"Output channel {self.results_channel} is not valid ('disk', 'azure_blob')"
+                f"Output channel {self.results_channel} is not valid ('disk', 'blob')"
             )
             raise NotImplementedError()
 
@@ -70,7 +69,7 @@ class LWOrchestrator:
         """
         Write the output data
         :param data: The data to write
-        :param segment: the current segment
+        :param segment_list: the current segment
         :return: None
         """
         logging.info(f"Writing Orcha {segment_list} results")
@@ -104,19 +103,9 @@ class LWOrchestrator:
     def run_process(self, process_dict: Dict[str, Any]) -> Any:
         """
         Run a segment process
+
         :param process_dict: The dict describing the process, it's constructor args, the run function,
         and the run function args.
-        Example:
-            {
-             "process": "run_queue",
-             "constructor_options": {
-                 "retailer": self.retailer,
-                 "config": queue_process_config,
-                 "batch_id": self.batch_id,
-             },
-             "run_command": "start_queue",
-             "run_options": {},
-            }
         :return: the return value of running the process
         """
         logging.info(f"Calling process: {process_dict['process']}")
